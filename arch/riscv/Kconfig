@@ -46,6 +46,11 @@ config TARGET_TH1520_LPI4A
 config TARGET_XILINX_MBV
 	bool "Support AMD/Xilinx MicroBlaze V"
 
+config ARCH_ESPRESSIF
+	bool "Support Espressif's SoCs"
+	help
+	  Support for Espressif RISC-V SoCs.
+
 endchoice
 
 config SYS_ICACHE_OFF
@@ -91,6 +96,7 @@ source "board/sophgo/milkv_duo/Kconfig"
 source "board/starfive/visionfive2/Kconfig"
 source "board/thead/th1520_lpi4a/Kconfig"
 source "board/xilinx/mbv/Kconfig"
+source "board/espressif/Kconfig"
 
 # platform-specific options below
 source "arch/riscv/cpu/andes/Kconfig"

@@ -1115,6 +1115,12 @@ config XEN_SERIAL
 	  If built without DM support, then requires Xen
 	  to be built with CONFIG_VERBOSE_DEBUG.
 
+config ESP_SERIAL
+	bool "Espressif serial support"
+	depends on DM_SERIAL
+	help
+	  This driver supports the Espressif UART. If unsure say N.
+
 choice
 	prompt "Console port"
 	default 8xx_CONS_SMC1
