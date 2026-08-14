@@ -1,0 +1,7 @@
+Espressif ESP32-S31 BOARD
+M:	Espressif Systems (Shanghai) CO LTD
+S:	Maintained
+F:	board/espressif/esp32s31/
+F:	include/configs/esp32s31.h
+F:	configs/espressif_esp32s31_defconfig
+F:	arch/riscv/dts/esp32s31.dts

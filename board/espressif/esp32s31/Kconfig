@@ -1,0 +1,20 @@
+if TARGET_ESP32S31
+
+config SYS_BOARD
+	default "esp32s31"
+
+config SYS_VENDOR
+	default "espressif"
+
+config SYS_CPU
+	default "generic"
+
+config SYS_CONFIG_NAME
+	default "esp32s31"
+
+config BOARD_SPECIFIC_OPTIONS
+	def_bool y
+	select GENERIC_RISCV
+	select SUPPORT_SPL
+
+endif

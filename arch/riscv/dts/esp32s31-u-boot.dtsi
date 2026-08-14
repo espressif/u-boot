@@ -1,0 +1,74 @@
+// SPDX-License-Identifier: GPL-2.0+
+/* Binman FIT packing description for the ESP32-S31 SPL boot flow. */
+
+#include <config.h>
+
+/ {
+	binman: binman {
+		multiple-images;
+	};
+};
+
+&binman {
+	itb {
+		filename = "u-boot.itb";
+
+		fit {
+			description = "ESP32-S31 SPL FIT";
+			#address-cells = <1>;
+			fit,external-offset = <0>;
+
+			images {
+				opensbi {
+					description = "OpenSBI";
+					type = "firmware";
+					os = "opensbi";
+					arch = "riscv";
+					compression = "none";
+					load = <CONFIG_SPL_OPENSBI_LOAD_ADDR>;
+					entry = <CONFIG_SPL_OPENSBI_LOAD_ADDR>;
+
+					opensbi {
+						filename = "fw_dynamic.bin";
+						missing-msg = "opensbi";
+					};
+				};
+
+				uboot {
+					description = "U-Boot";
+					type = "standalone";
+					os = "u-boot";
+					arch = "riscv";
+					compression = "none";
+					load = <CONFIG_TEXT_BASE>;
+					entry = <CONFIG_TEXT_BASE>;
+
+					u-boot-nodtb {
+					};
+				};
+
+				fdt-1 {
+					description = "U-Boot dtb";
+					type = "flat_dt";
+					arch = "riscv";
+					compression = "none";
+					load = <0x50300000>;
+
+					u-boot-dtb {
+					};
+				};
+			};
+
+			configurations {
+				default = "conf-1";
+
+				conf-1 {
+					description = "ESP32-S31 boot";
+					firmware = "opensbi";
+					loadables = "uboot";
+					fdt = "fdt-1";
+				};
+			};
+		};
+	};
+};

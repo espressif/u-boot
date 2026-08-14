@@ -1,0 +1,88 @@
+// SPDX-License-Identifier: GPL-2.0+
+
+/dts-v1/;
+
+#include <dt-bindings/interrupt-controller/irq.h>
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	model = "Espressif ESP32-S31";
+	compatible = "espressif,esp32s31";
+
+	aliases {
+		serial0 = &uart0;
+	};
+
+	chosen {
+		bootargs = "earlycon=sbi console=ttyESP0";
+		stdout-path = "serial0:115200n8";
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		timebase-frequency = <320000000>;
+		bootph-all;
+
+		cpu0: cpu@0 {
+			compatible = "riscv";
+			device_type = "cpu";
+			mmu-type = "riscv,sv32";
+			reg = <0>;
+			riscv,isa = "rv32imac_zicsr_zifencei";
+			bootph-all;
+		};
+	};
+
+	xtal_40m: xtal_40m {
+		bootph-all;
+		compatible = "fixed-clock";
+		clock-frequency = <40000000>;
+		#clock-cells = <0>;
+	};
+
+	soc {
+		bootph-all;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "simple-bus";
+		ranges;
+
+		clic: interrupt-controller@10800000 {
+			compatible = "espressif,esp-clic";
+			reg = <0x10800000 0x2000>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
+		};
+
+		uart0: serial@2038A000 {
+			bootph-all;
+			compatible = "esp,uart0";
+			reg = <0x2038A000 0x1000>;
+			reg-io-width = <4>;
+			reg-shift = <2>;
+			clocks = <&xtal_40m>;
+		};
+	};
+
+	/*
+	 * HP-RAM bank above OpenSBI (0x2F000000-), capped below ROM data at
+	 * 0x2F07FFAC by board_get_usable_ram_top().
+	 */
+	memory@2f030000 {
+		bootph-all;
+		device_type = "memory";
+		reg = <0x2f030000 0x00050000>;	/* 320 KB HP-RAM */
+	};
+
+	/*
+	 * PSRAM as a second bank so u-boot's lmb knows 0x50000000 is RAM (kernel
+	 * load target); u-boot itself lives in HP-RAM per the cap above.
+	 */
+	memory@50000000 {
+		bootph-all;
+		device_type = "memory";
+		reg = <0x50000000 0x01000000>;	/* 16 MB PSRAM */
+	};
+};

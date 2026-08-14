@@ -1,0 +1,11 @@
+if ARCH_ESPRESSIF
+
+config TARGET_ESP32S31
+    bool "ESP32-S31"
+    default y
+
+if TARGET_ESP32S31
+source "board/espressif/esp32s31/Kconfig"
+endif
+
+endif

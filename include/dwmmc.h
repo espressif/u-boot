@@ -92,6 +92,7 @@
 #define DWMCI_CMD_SEND_STOP	(1 << 12)
 #define DWMCI_CMD_ABORT_STOP	(1 << 14)
 #define DWMCI_CMD_PRV_DAT_WAIT	(1 << 13)
+#define DWMCI_CMD_CARD_NUMBER1	(1 << 16)
 #define DWMCI_CMD_UPD_CLK	(1 << 21)
 #define DWMCI_CMD_USE_HOLD_REG	(1 << 29)
 #define DWMCI_CMD_START		(1 << 31)
@@ -99,11 +100,15 @@
 /* CLKENA register */
 #define DWMCI_CLKEN_ENABLE	(1 << 0)
 #define DWMCI_CLKEN_LOW_PWR	(1 << 16)
+#define DWMCI_CLKEN_ENABLE1	(1 << 1)
+#define DWMCI_CLKEN_LOW_PWR1	(1 << 17)
 
 /* Card-type registe */
 #define DWMCI_CTYPE_1BIT	0
 #define DWMCI_CTYPE_4BIT	(1 << 0)
 #define DWMCI_CTYPE_8BIT	(1 << 16)
+#define DWMCI_CTYPE_4BIT1	(1 << 1)
+#define DWMCI_CTYPE_8BIT1	(1 << 17)
 
 /* Status Register */
 #define DWMCI_FIFO_EMPTY	(1 << 2)
