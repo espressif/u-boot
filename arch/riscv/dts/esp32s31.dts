@@ -17,6 +17,11 @@
 	chosen {
 		bootargs = "earlycon=sbi console=ttyESP0";
 		stdout-path = "serial0:115200n8";
+
+		opensbi-config {
+			compatible = "opensbi,config";
+			heap-size = <0x7000>;
+		};
 	};
 
 	cpus {
@@ -30,6 +35,15 @@
 			device_type = "cpu";
 			mmu-type = "riscv,sv32";
 			reg = <0>;
+			riscv,isa = "rv32imac_zicsr_zifencei";
+			bootph-all;
+		};
+
+		cpu1: cpu@1 {
+			compatible = "riscv";
+			device_type = "cpu";
+			mmu-type = "riscv,sv32";
+			reg = <1>;
 			riscv,isa = "rv32imac_zicsr_zifencei";
 			bootph-all;
 		};
