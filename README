@@ -3,6 +3,12 @@
 # (C) Copyright 2000 - 2013
 # Wolfgang Denk, DENX Software Engineering, wd@denx.de.
 
+> **⚠️ Espressif Fork**: This repository is Espressif's downstream fork of U-Boot with support for ESP32S31.  
+> **⚠️ Developer Preview**: This branch (`integration/v2024.07-esp32s31`) is currently in developer preview and is **not yet recommended for production use**. 
+> 📖 See [Espressif Documentation](docs/espressif/README.md) for branch strategy, chip support, and Espressif-specific information.
+
+---
+
 Summary:
 ========
 
