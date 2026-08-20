@@ -9,7 +9,6 @@
  * published by the Free Software Foundation.
  */
 
-#include <common.h>
 #include <clk.h>
 #include <debug_uart.h>
 #include <dm.h>
@@ -23,6 +22,7 @@
 #include <serial.h>
 #include <linux/err.h>
 #include <asm/arch-esp32s31/soc/uart_reg.h>
+
 DECLARE_GLOBAL_DATA_PTR;
 
 /**
@@ -32,8 +32,7 @@ DECLARE_GLOBAL_DATA_PTR;
 #define UART_UPDATE_OFF		0x98
 
 struct uart_esp {
-	union
-	{
+	union {
 		u32 txfifo;
 		u32 rxfifo;
 	};
@@ -55,39 +54,45 @@ struct esp_uart_plat {
 
 /* Set up the baud rate in gd struct */
 static void _esp_serial_setbrg(struct uart_esp *regs,
-				  unsigned long clock, unsigned long baud)
+			       unsigned long clock, unsigned long baud)
 {
 	unsigned long div_value = (clock << 4) / baud;
 	unsigned long div = ((div_value >> 4) & UART_CLKDIV_M);
 	unsigned long div_frag = (div_value & UART_CLKDIV_FRAG_V) << UART_CLKDIV_FRAG_S;
+
 	writel(div | div_frag, &regs->div);
 	writel(1, (void *)((uintptr_t)regs + UART_UPDATE_OFF));
-	while (readl((void *)((uintptr_t)regs + UART_UPDATE_OFF)) & 1);
+	while (readl((void *)((uintptr_t)regs + UART_UPDATE_OFF)) & 1)
+		;
 }
 
 static void _esp_serial_init(struct uart_esp *regs)
 {
 	u32 sync;
+
 	// wait tx idle first
-	while((readl(&regs->status) >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT_M);
+	while ((readl(&regs->status) >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT_M)
+		;
 	// set rst fifo
 	sync = readl(&regs->sync);
 	sync |= (UART_TXFIFO_RST | UART_RXFIFO_RST);
 	writel(sync, &regs->sync);
 	// write update to valid the rst
 	writel(1, (void *)((uintptr_t)regs + UART_UPDATE_OFF));
-	while (readl((void *)((uintptr_t)regs + UART_UPDATE_OFF)) & 1);
+	while (readl((void *)((uintptr_t)regs + UART_UPDATE_OFF)) & 1)
+		;
 	// clr rst fifo
 	sync &= ~(UART_TXFIFO_RST | UART_RXFIFO_RST);
 	writel(sync, &regs->sync);
 	// write update to valid the rst clr
 	writel(1, (void *)((uintptr_t)regs + UART_UPDATE_OFF));
-	while (readl((void *)((uintptr_t)regs + UART_UPDATE_OFF)) & 1);
+	while (readl((void *)((uintptr_t)regs + UART_UPDATE_OFF)) & 1)
+		;
 }
 
 static int _esp_serial_putc(struct uart_esp *regs, const char c)
 {
-	if (((readl(&regs->status) & UART_TXFIFO_CNT_M) >> UART_TXFIFO_CNT_S) >= 128 )
+	if (((readl(&regs->status) & UART_TXFIFO_CNT_M) >> UART_TXFIFO_CNT_S) >= 128)
 		return -EAGAIN;
 
 	writel(c, &regs->txfifo);
@@ -99,6 +104,7 @@ static int _esp_serial_getc(struct uart_esp *regs)
 {
 	int ch;
 	int cnt = (readl(&regs->status) & UART_RXFIFO_CNT_M);
+
 	if (!cnt)
 		return -EAGAIN;
 	ch = readl(&regs->rxfifo) & UART_RXFIFO_RD_BYTE_M;
@@ -152,7 +158,8 @@ static int esp_serial_getc(struct udevice *dev)
 	struct esp_uart_plat *plat = dev_get_plat(dev);
 	struct uart_esp *regs = plat->regs;
 
-	while ((c = _esp_serial_getc(regs)) == -EAGAIN) ;
+	while ((c = _esp_serial_getc(regs)) == -EAGAIN)
+		;
 
 	return c;
 }
@@ -162,7 +169,8 @@ static int esp_serial_putc(struct udevice *dev, const char ch)
 	int rc;
 	struct esp_uart_plat *plat = dev_get_plat(dev);
 
-	while ((rc = _esp_serial_putc(plat->regs, ch)) == -EAGAIN) ;
+	while ((rc = _esp_serial_putc(plat->regs, ch)) == -EAGAIN)
+		;
 
 	return rc;
 }
@@ -176,7 +184,6 @@ static int esp_serial_pending(struct udevice *dev, bool input)
 		return (readl(&regs->status) & UART_RXFIFO_CNT_M);
 	else
 		return (readl(&regs->status) & UART_TXFIFO_CNT_M);
-
 
 	return 0;
 }

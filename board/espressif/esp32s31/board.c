@@ -28,7 +28,7 @@ void *board_fdt_blob_setup(int *err)
 /* Cap RAM top below chip-ROM interface data at 0x2F07FFAC. */
 phys_addr_t board_get_usable_ram_top(phys_size_t total_size)
 {
-	return 0x2F07F000UL;
+	return 0x2f07e600;
 }
 
 int board_init(void)

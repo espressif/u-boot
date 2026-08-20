@@ -39,7 +39,6 @@ secondary_harts_relocation_error:
 .section .text
 .globl _start
 _start:
-
 #if CONFIG_IS_ENABLED(RISCV_MMODE)
 	csrr	a0, CSR_MHARTID
 #endif
