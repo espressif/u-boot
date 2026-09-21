@@ -40,7 +40,11 @@ typedef __SIZE_TYPE__		__kernel_size_t;
 typedef unsigned long		__kernel_size_t;
 #endif
 typedef long			__kernel_ssize_t;
+#if __riscv_xlen == 32
+typedef int			__kernel_ptrdiff_t;
+#else
 typedef long			__kernel_ptrdiff_t;
+#endif
 typedef long			__kernel_time_t;
 typedef long			__kernel_suseconds_t;
 typedef long			__kernel_clock_t;
