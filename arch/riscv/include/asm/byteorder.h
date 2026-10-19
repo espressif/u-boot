@@ -26,6 +26,10 @@
 #  define __SWAB_64_THRU_32__
 #endif
 
+#ifdef __BYTE_ORDER
+#undef __BYTE_ORDER
+#endif
+
 #ifdef __RISCVEB__
 #include <linux/byteorder/big_endian.h>
 #else
