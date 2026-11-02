@@ -21,6 +21,11 @@
  */
 #define CFG_EXTRA_ENV_SETTINGS \
 	"bootm_low=0x50000000\0" \
-	"bootm_size=0x1000000\0"
+	"bootm_size=0x1000000\0" \
+	"bootargsnor=earlycon=sbi console=ttyS0 " \
+		"root=mtd:rootfs rootfstype=cramfs ro swiotlb=128\0" \
+	"bootargssd=earlycon=sbi console=ttyS0 " \
+		"root=/dev/mmcblk0p2 rootfstype=ext4 rootwait rw " \
+		"swiotlb=128\0"
 
 #endif /* __ESP32S31_CONFIG_H */
