@@ -73,8 +73,11 @@ void spl_board_init(void)
 	 * safe here because the SPL runs from uncached HP-RAM.
 	 */
 	s31_spl_flash_reconfig_qio();
-	if (psram_init())
-		puts("spl: psram_init failed\n");
+	if (psram_init()) {
+		puts("S31-FIX: PSRAM initialization failed; safe halt\n");
+		for (;;)
+			;
+	}
 
 	/* Clock-tree bring-up. Order: MPLL (EMAC ref path; psram_init already
 	 * did the PSRAM MPLL) -> CPU 40->320 MHz CPLL -> systimer peripheral
