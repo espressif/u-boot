@@ -102,13 +102,31 @@ static void psram_ldo_init(void)
 #define LP_AONCLKRST_MSPI_FB_DIV_S        3
 #define LP_AONCLKRST_MSPI_FB_DIV_M        (0x1FU << LP_AONCLKRST_MSPI_FB_DIV_S)
 
-#define PSRAM_MPLL_FREQ_MHZ               500
+#define PSRAM_MPLL_FREQ_MHZ               400
 #define XTAL_FREQ_MHZ                     40
 
-static void psram_mpll_init(void)
+/* S31-FIX: IDF v6.1 bootloader_hardware_init() enables the analog I2C
+ * master before MPLL calibration. MODEM_LPCON.clk_i2c_mst_en is BIT(2)
+ * per the ESP-IDF modem register definitions.
+ */
+static void s31_psram_analog_i2c_enable(void)
+{
+	setbits_le32((void *)(DR_REG_HP_SYS_CLKRST_BASE + 0x40U), BIT(0));
+	setbits_le32((void *)(0x2010F000U + 0x18U), BIT(2));
+	setbits_le32((void *)(0x2010F000U + 0x1CU), BIT(2));
+	setbits_le32((void *)(0x20109C00U + 0x04U), BIT(12));
+	printf("S31-FIX: analog I2C gates: modem=%08x lpcon=%08x force=%08x syscon=%08x\n",
+	       readl((void *)(DR_REG_HP_SYS_CLKRST_BASE + 0x40U)),
+	       readl((void *)(0x2010F000U + 0x18U)),
+	       readl((void *)(0x2010F000U + 0x1CU)),
+	       readl((void *)(0x20109C00U + 0x04U)));
+}
+
+static int psram_mpll_init(void)
 {
 	u8 ref_div = 1;
 	u8 fb_div;
+	u32 guard = 3000000U;
 
 	/* Power-up sequence. Also brings up CPLL, since nothing earlier
 	 * in this boot flow sets those bits; without them the PMU FSM
@@ -129,16 +147,37 @@ static void psram_mpll_init(void)
 	 */
 	fb_div = PSRAM_MPLL_FREQ_MHZ * (ref_div + 1) / XTAL_FREQ_MHZ - 1;
 
+	/* IDF completes CPLL calibration before MPLL. Bit 2 is CAL_END,
+	 * bit 3 is CAL_STOP. Do not assert CAL_STOP unless END is set.
+	 */
+	if (readl((void *)HP_SYS_CLKRST_ANA_PLL_CTRL0_REG) & BIT(2)) {
+		setbits_le32((void *)HP_SYS_CLKRST_ANA_PLL_CTRL0_REG, BIT(3));
+		puts("S31-FIX: CPU PLL calibration stopped before MPLL");
+	} else {
+		puts("S31-FIX: CPU_PLL_CAL_END not set");
+	}
 	clrbits_le32((void *)HP_SYS_CLKRST_ANA_PLL_CTRL0_REG,
 		     HP_SYS_CLKRST_REG_MSPI_CAL_STOP);
 	clrsetbits_le32((void *)LP_AONCLKRST_MSPI_DIV_REG,
 			LP_AONCLKRST_MSPI_FB_DIV_M,
 			(u32)fb_div << LP_AONCLKRST_MSPI_FB_DIV_S);
+	printf("S31-FIX: MPLL cal start ctrl=%08x div=%08x\n",
+	       readl((void *)HP_SYS_CLKRST_ANA_PLL_CTRL0_REG),
+	       readl((void *)LP_AONCLKRST_MSPI_DIV_REG));
 	while (!(readl((void *)HP_SYS_CLKRST_ANA_PLL_CTRL0_REG) &
-		 HP_SYS_CLKRST_REG_MSPI_CAL_END))
+		 HP_SYS_CLKRST_REG_MSPI_CAL_END) && --guard)
 		;
+	if (!guard) {
+		printf("S31-FIX: MPLL CAL TIMEOUT ctrl=%08x div=%08x\n",
+		       readl((void *)HP_SYS_CLKRST_ANA_PLL_CTRL0_REG),
+		       readl((void *)LP_AONCLKRST_MSPI_DIV_REG));
+		return -1;
+	}
 	setbits_le32((void *)HP_SYS_CLKRST_ANA_PLL_CTRL0_REG,
 		     HP_SYS_CLKRST_REG_MSPI_CAL_STOP);
+	printf("S31-FIX: MPLL CAL OK ctrl=%08x\n",
+	       readl((void *)HP_SYS_CLKRST_ANA_PLL_CTRL0_REG));
+	return 0;
 }
 
 /*------------------------------------------------------------------------
@@ -254,11 +293,12 @@ static void psram_pin_init(void)
 #define AP_OCT_PSRAM_CS_HOLD_TIME         4
 #define AP_OCT_PSRAM_CS_HOLD_DELAY        3
 
-/* PSRAM speed at init: MPLL (500 MHz) / divisor. Set to 125 MHz so
- * MPLL can run at 500 MHz — required for the EMAC's 125 MHz RGMII
- * reference (CNNT_HP_EMAC_REF_CTRL.DIV = 3 -> MPLL/4 = 125 MHz).
+/*
+ * Use the 400 MHz MPLL / 2 profile during initial PSRAM bring-up.
+ * The later EMAC clock initialization may reprogram the shared MPLL;
+ * its interaction with the PSRAM clock still needs validation.
  */
-#define PSRAM_SPEED_MHZ                   125
+#define PSRAM_SPEED_MHZ                   200
 #define PSRAM_BUS_FREQ_DIV                (PSRAM_MPLL_FREQ_MHZ / PSRAM_SPEED_MHZ)
 
 static void psram_ctrlr_init(void)
@@ -374,13 +414,13 @@ static void psram_ctrlr_init(void)
 
 #define AP_OCT_PSRAM_REG_READ             0x4040
 #define AP_OCT_PSRAM_REG_WRITE            0xC0C0
-#define AP_OCT_PSRAM_RD_REG_DUMMY_BITLEN  (2 * (9 - 1))
+#define AP_OCT_PSRAM_RD_REG_DUMMY_BITLEN  (2 * (7 - 1))
 
 #define PSRAM_MSPI_ID                     3        /* PSRAM controller uses MSPI3 path */
 #define PSRAM_CS_MASK                     BIT(1)
 
-#define AP_OCT_PSRAM_RD_LATENCY           6
-#define AP_OCT_PSRAM_WR_LATENCY           3
+#define AP_OCT_PSRAM_RD_LATENCY           4
+#define AP_OCT_PSRAM_WR_LATENCY           1
 
 union psram_mr0 {
 	struct {
@@ -529,11 +569,13 @@ static void psram_mode_reg_init(void)
 	 */
 	psram_xact(AP_OCT_PSRAM_REG_READ, 0, NULL, 0, &rx_buf, 16,
 		   AP_OCT_PSRAM_RD_REG_DUMMY_BITLEN);
+	printf("S31-DIAG: MR0 raw=0x%08x\n", rx_buf);
 	mr0.val = rx_buf & 0xFF;
 
 	/* Read MR4 (addr 4 brings back MR4 + MR8). */
 	psram_xact(AP_OCT_PSRAM_REG_READ, 4, NULL, 0, &rx_buf, 16,
 		   AP_OCT_PSRAM_RD_REG_DUMMY_BITLEN);
+	printf("S31-DIAG: MR4 raw=0x%08x\n", rx_buf);
 	mr4.val = rx_buf & 0xFF;
 
 	/* Update MR0 latency / drive, then write back. */
@@ -551,6 +593,7 @@ static void psram_mode_reg_init(void)
 	/* Read MR8 (8 bits at addr 8). */
 	psram_xact(AP_OCT_PSRAM_REG_READ, 8, NULL, 0, &rx_buf, 8,
 		   AP_OCT_PSRAM_RD_REG_DUMMY_BITLEN);
+	printf("S31-DIAG: MR8 raw=0x%08x\n", rx_buf);
 	mr8.val = rx_buf & 0xFF;
 
 	/* Update MR8 burst length, then write back. */
@@ -564,6 +607,7 @@ static void psram_mode_reg_init(void)
 	/* Read MR2 for density (addr 2 brings MR2 + MR3). */
 	psram_xact(AP_OCT_PSRAM_REG_READ, 2, NULL, 0, &rx_buf, 16,
 		   AP_OCT_PSRAM_RD_REG_DUMMY_BITLEN);
+	printf("S31-DIAG: MR2 raw=0x%08x\n", rx_buf);
 	mr2.val = rx_buf & 0xFF;
 
 	switch (mr2.density) {
@@ -637,8 +681,8 @@ static void psram_mode_reg_init(void)
 #define AP_OCT_PSRAM_SYNC_READ            0x0000
 #define AP_OCT_PSRAM_CMD_BITLEN           16
 #define AP_OCT_PSRAM_ADDR_BITLEN          32
-#define AP_OCT_PSRAM_RD_DUMMY_BITLEN      (2 * (18 - 1))   /* 34 */
-#define AP_OCT_PSRAM_WR_DUMMY_BITLEN      (2 * (9 - 1))    /* 16 */
+#define AP_OCT_PSRAM_RD_DUMMY_BITLEN      (2 * (14 - 1))   /* 26 */
+#define AP_OCT_PSRAM_WR_DUMMY_BITLEN      (2 * (7 - 1))    /* 12 */
 
 static void psram_axi_config(void)
 {
@@ -744,13 +788,22 @@ static void psram_mmu_map(u32 psram_size_bytes)
 
 int psram_init(void)
 {
+	puts("S31-FIX: PSRAM start\n");
+	s31_psram_analog_i2c_enable();
 	psram_ldo_init();
-	psram_mpll_init();
+	if (psram_mpll_init())
+		return -1;
 	psram_mspi_clock_init();
+	puts("S31-DIAG: mspi clock done\n");
 	psram_pin_init();
+	puts("S31-DIAG: pin init done\n");
 	psram_ctrlr_init();
+	puts("S31-DIAG: controller init done\n");
+	puts("S31-DIAG: mode register begin\n");
 	psram_mode_reg_init();
+	printf("S31-DIAG: mode register done size=%u\n", (unsigned int)s_psram_size);
 	psram_axi_config();
+	puts("S31-DIAG: AXI config done\n");
 	if (!s_psram_size)
 		return -1;
 	psram_mmu_map(s_psram_size);
